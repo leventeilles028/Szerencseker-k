@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="hu">
 <head>
     <meta charset="UTF-8">
@@ -7,199 +7,163 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            background: #2c2c2c;
-            color: #fff;
-        }
-
-        .wheel-container {
-            position: relative;
-            width: 300px;
-            height: 300px;
-        }
-
-        .wheel {
-            width: 100%;
-            height: 100%;
-            border-radius: 50%;
-            border: 5px solid #fff;
-            background: conic-gradient( #ff4500 0% 12.5%, #ff8c00 12.5% 25%, #ffd700 25% 37.5%, #32cd32 37.5% 50%, #1e90ff 50% 62.5%, #8a2be2 62.5% 75%, #ff69b4 75% 87.5%, #4b0082 87.5% 100% );
-            position: relative;
-            transform: rotate(0deg);
-            transition: transform 4s cubic-bezier(0.17, 0.67, 0.83, 0.67);
-        }
-
-        .pointer {
-            position: absolute;
-            top: calc(50% - 10px);
-            left: 51%;
-            width: 0;
-            height: 25px;
-            transform: translate(-50%, -50%);
-            border-left: 14px solid transparent;
-            border-right: 14px solid transparent;
-            border-bottom: 20px solid #fff;
-            z-index: 10;
-        }
-
-        .button {
-            margin-top: 150px;
             text-align: center;
+            margin: 0;
+            padding: 0;
+            background-color: #f9f9f9;
         }
 
-        button {
+        canvas {
+            margin-top: 20px;
+            border: 2px solid #333;
+            background: #fff;
+        }
+
+        #spinButton {
+            margin-top: 20px;
             padding: 10px 20px;
-            font-size: 16px;
-            cursor: pointer;
-            background-color: #007bff;
+            font-size: 18px;
             color: #fff;
+            background-color: #007bff;
             border: none;
             border-radius: 5px;
-            transition: background-color 0.3s ease;
+            cursor: pointer;
         }
 
-            button:hover {
-                background-color: #0056b3;
-            }
+        #spinButton:disabled {
+            background-color: #999;
+            cursor: not-allowed;
+        }
 
-        .result, .balance, .history {
+        #result, #balance {
             margin-top: 20px;
             font-size: 18px;
-            font-weight: bold;
-            text-align: center;
         }
-
-        .wheel span {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 14px;
-            font-weight: bold;
-            color: #000;
-            transform-origin: center;
-        }
-
-            .wheel span:nth-child(1) {
-                transform: rotate(22.5deg) translate(0, -130px);
-            }
-
-            .wheel span:nth-child(2) {
-                transform: rotate(67.5deg) translate(0, -130px);
-            }
-
-            .wheel span:nth-child(3) {
-                transform: rotate(112.5deg) translate(0, -130px);
-            }
-
-            .wheel span:nth-child(4) {
-                transform: rotate(157.5deg) translate(0, -130px);
-            }
-
-            .wheel span:nth-child(5) {
-                transform: rotate(202.5deg) translate(0, -130px);
-            }
-
-            .wheel span:nth-child(6) {
-                transform: rotate(247.5deg) translate(0, -130px);
-            }
-
-            .wheel span:nth-child(7) {
-                transform: rotate(292.5deg) translate(0, -130px);
-            }
-
-            .wheel span:nth-child(8) {
-                transform: rotate(337.5deg) translate(0, -130px);
-            }
     </style>
 </head>
 <body>
-    <div class="wheel-container">
-        <div class="wheel" id="wheel">
-            <span>500 Ft</span>
-            <span>5000 Ft</span>
-            <span>50 000 Ft</span>
-            <span>500 000 Ft</span>
-            <span>1 000 000 Ft</span>
-            <span>5 000 000 Ft</span>
-            <span>10 000 000 Ft</span>
-            <span>20 000 000 Ft</span>
-        </div>
-        <div class="pointer"></div>
-    </div>
-    <div class="button">
-        <button id="spinButton">Forgatás (5 000 Ft)</button>
-    </div>
-    <div class="balance" id="balance">Egyenleged: 40 000 Ft</div>
-    <div class="result" id="result">Pörgesd meg a kereket!</div>
-    <div class="history" id="history">Eddigi nyeremények:</div>
+    <h1>Szerencsekerék</h1>
+    <canvas id="wheelCanvas" width="500" height="500"></canvas>
+    <br>
+    <button id="spinButton">Pörgetés</button>
+    <div id="balance">Egyenleg: 50 000 Ft</div>
+    <div id="result"></div>
 
     <script>
-        const wheel = document.getElementById('wheel');
-        const result = document.getElementById('result');
+        const canvas = document.getElementById('wheelCanvas');
+        const ctx = canvas.getContext('2d');
         const spinButton = document.getElementById('spinButton');
-        const balanceDisplay = document.getElementById('balance');
-        const history = document.getElementById('history');
+        const resultDiv = document.getElementById('result');
+        const balanceDiv = document.getElementById('balance');
 
-        const prizes = [
-            { amount: 500, probability: 0.80 },
-            { amount: 5000, probability: 0.30 },
-            { amount: 50000, probability: 0.10 },
-            { amount: 500000, probability: 0.05 },
-            { amount: 1000000, probability: 0.01 },
-            { amount: 5000000, probability: 0.010 },
-            { amount: 10000000, probability: 0.005 },
-            { amount: 20000000, probability: 0.001 }
+        let balance = 50000;
+
+        const segments = [
+            "500 Ft", "1 000 Ft", "2 000 Ft", "5 000 Ft",
+            "10 000 Ft", "20 000 Ft", "50 000 Ft",
+            "100 000 Ft", "500 000 Ft", "1 000 000 Ft",
+            "2 000 000 Ft", "5 000 000 Ft", "10 000 000 Ft",
+            "20 000 000 Ft", "Csőd"
         ];
 
-        let isSpinning = false;
-        let winnings = [];
-        let balance = 40000;
-        const spinCost = 5000;
+        const colors = ["#FF5733", "#33FF57", "#3357FF", "#F1C40F", "#8E44AD", "#E74C3C", "#2ECC71", "#3498DB", "#9B59B6", "#1ABC9C", "#F39C12", "#D35400", "#2980B9", "#C0392B", "#7F8C8D"];
 
-        const prizeSegments = [];
-        prizes.forEach(prize => {
-            for (let i = 0; i < prize.probability * 1000; i++) {
-                prizeSegments.push(prize.amount);
+        let startAngle = 0;
+        const arc = Math.PI / (segments.length / 2);
+        let spinTimeout = null;
+        let spinAngleStart = 10;
+        let spinTime = 0;
+        let spinTimeTotal = 0;
+
+        function drawRouletteWheel() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const outsideRadius = 200;
+            const textRadius = 160;
+            const insideRadius = 50;
+
+            ctx.strokeStyle = "#000";
+            ctx.lineWidth = 2;
+
+            ctx.font = "14px Arial";
+
+            for (let i = 0; i < segments.length; i++) {
+                const angle = startAngle + i * arc;
+                ctx.fillStyle = colors[i % colors.length];
+
+                ctx.beginPath();
+                ctx.arc(250, 250, outsideRadius, angle, angle + arc, false);
+                ctx.arc(250, 250, insideRadius, angle + arc, angle, true);
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.save();
+                ctx.fillStyle = "#000";
+                ctx.translate(250 + Math.cos(angle + arc / 2) * textRadius, 250 + Math.sin(angle + arc / 2) * textRadius);
+                ctx.rotate(angle + arc / 2);
+                ctx.fillText(segments[i], -ctx.measureText(segments[i]).width / 2, 0);
+                ctx.restore();
             }
-        });
 
-        spinButton.addEventListener('click', () => {
-            if (isSpinning) return;
-            if (balance < spinCost) {
-                result.textContent = "Nincs elég pénzed a pörgetéshez!";
+            ctx.fillStyle = "#000";
+            ctx.beginPath();
+            ctx.moveTo(250 - 4, 250 - (outsideRadius + 5));
+            ctx.lineTo(250 + 4, 250 - (outsideRadius + 5));
+            ctx.lineTo(250, 250 - (outsideRadius - 5));
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        function rotateWheel() {
+            spinTime += 30;
+            if (spinTime >= spinTimeTotal) {
+                stopRotateWheel();
                 return;
             }
+            const spinAngle = spinAngleStart - easeOut(spinTime, 0, spinAngleStart, spinTimeTotal);
+            startAngle += (spinAngle * Math.PI) / 180;
+            drawRouletteWheel();
+            spinTimeout = setTimeout(rotateWheel, 30);
+        }
 
-            isSpinning = true;
-            balance -= spinCost;
-            balanceDisplay.textContent = `Egyenleged: ${balance.toLocaleString()} Ft`;
+        function stopRotateWheel() {
+            clearTimeout(spinTimeout);
+            const degrees = (startAngle * 180) / Math.PI + 90;
+            const arcd = (arc * 180) / Math.PI;
+            const index = Math.floor((360 - (degrees % 360)) / arcd);
+            const result = segments[index];
 
-            const randomDegree = Math.floor(Math.random() * 360) + 3600;
-            const randomIndex = Math.floor(Math.random() * prizeSegments.length);
-            const prize = prizeSegments[randomIndex];
+            if (result === "Csőd") {
+                balance = 0;
+            } else {
+                const amount = parseInt(result.replace(/[^0-9]/g, ''), 10) || 0;
+                balance += amount;
+            }
 
-            wheel.style.transition = 'transform 4s cubic-bezier(0.17, 0.67, 0.83, 0.67)';
-            wheel.style.transform = `rotate(${randomDegree}deg)`;
+            updateUI(result);
+            spinButton.disabled = false;
+        }
 
-            setTimeout(() => {
-                winnings.push(`${prize.toLocaleString()} Ft`);
-                balance += prize;
-                result.textContent = `Gratulálok! Nyereményed: ${prize.toLocaleString()} Ft`;
-                history.textContent = `Eddigi nyeremények: ${winnings.join(', ')}`;
-                balanceDisplay.textContent = `Egyenleged: ${balance.toLocaleString()} Ft`;
-                isSpinning = false;
-                wheel.style.transition = 'none';
-                wheel.style.transform = `rotate(${randomDegree % 360}deg)`;
-            }, 4000);
+        function easeOut(t, b, c, d) {
+            const ts = (t /= d) * t;
+            const tc = ts * t;
+            return b + c * (tc + -3 * ts + 3 * t);
+        }
+
+        function updateUI(result) {
+            balanceDiv.textContent = `Egyenleg: ${balance.toLocaleString()} Ft`;
+            resultDiv.innerHTML = `<p>Eredmény: <strong>${result}</strong></p>`;
+        }
+
+        spinButton.addEventListener('click', () => {
+            spinButton.disabled = true;
+            resultDiv.innerHTML = "";
+            spinAngleStart = Math.random() * 10 + 10;
+            spinTime = 0;
+            spinTimeTotal = Math.random() * 3 + 4 * 1000;
+            rotateWheel();
         });
+
+        drawRouletteWheel();
     </script>
 </body>
 </html>
